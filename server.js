@@ -1,14 +1,28 @@
 const express = require('express');
-const path = require('path');
+const exphbs = require('express-handlebars');
+const homeRoutes = require('./routes/home');
+const coursesRoutes = require('./routes/courses');
+const addCourseRoutes = require('./routes/addCourse');
+
 const app = express();
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'index.html'));
+// Register and configure hbs.
+const hbs = exphbs.create({
+  defaultLayout: 'main',
+  extname: 'hbs',
 });
+app.engine('hbs', hbs.engine);
+app.set('view engine', 'hbs');
+app.set('views', 'views');
 
-app.get('/about', (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'about.html'));
-});
+// Middlewares
+app.use(express.static('public'));
+app.use(express.urlencoded({ extended: false }));
+
+// Routes
+app.use('/', homeRoutes);
+app.use('/courses', coursesRoutes);
+app.use('/add', addCourseRoutes);
 
 const PORT = process.env.PORT || 3000;
 
