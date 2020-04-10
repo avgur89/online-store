@@ -11,11 +11,14 @@ router.get('/', (req, res) => {
 
 router.post('/', async (req, res) => {
   const { title, price, imgUrl } = req.body;
-  const course = new Course(title, price, imgUrl);
+  const course = new Course({ title, price, imgUrl });
 
-  await course.save();
-
-  res.redirect('/courses');
+  try {
+    await course.save();
+    res.redirect('/courses');
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 module.exports = router;
