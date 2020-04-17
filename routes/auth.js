@@ -1,72 +1,103 @@
-const {Router} = require('express')
-const bcrypt = require('bcryptjs')
-const User = require('../models/user')
-const router = Router()
+const { Router } = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const sendgrid = require('nodemailer-sendgrid-transport');
+const keys = require('../keys');
+const regEmail = require('../mails/registration');
+const User = require('../models/user');
+const router = Router();
+
+const transporter = nodemailer.createTransport(
+  sendgrid({
+    auth: {
+      api_key: keys.SENDGRID_API_KEY,
+    },
+  })
+);
 
 router.get('/login', async (req, res) => {
   res.render('auth/login', {
     title: 'Авторизация',
     isLogin: true,
     loginError: req.flash('loginError'),
-    registerError: req.flash('registerError')
-  })
-})
+    registerError: req.flash('registerError'),
+  });
+});
 
 router.get('/logout', async (req, res) => {
   req.session.destroy(() => {
-    res.redirect('/auth/login#login')
-  })
-})
+    res.redirect('/auth/login#login');
+  });
+});
 
 router.post('/login', async (req, res) => {
   try {
-    const {email, password} = req.body
-    const candidate = await User.findOne({ email })
+    const { email, password } = req.body;
+    const candidate = await User.findOne({ email });
 
     if (candidate) {
-      const areSame = await bcrypt.compare(password, candidate.password)
+      const areSame = await bcrypt.compare(password, candidate.password);
 
       if (areSame) {
-        req.session.user = candidate
-        req.session.isAuthenticated = true
-        req.session.save(err => {
+        req.session.user = candidate;
+        req.session.isAuthenticated = true;
+        req.session.save((err) => {
           if (err) {
-            throw err
+            throw err;
           }
-          res.redirect('/')
-        })
+          res.redirect('/');
+        });
       } else {
-        req.flash('loginError', 'Неверный пароль')
-        res.redirect('/auth/login#login')
+        req.flash('loginError', 'Неверный пароль');
+        res.redirect('/auth/login#login');
       }
     } else {
-      req.flash('loginError', 'Такого пользователя не существует')
-      res.redirect('/auth/login#login')
+      req.flash('loginError', 'Такого пользователя не существует');
+      res.redirect('/auth/login#login');
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
   }
-})
+});
 
 router.post('/register', async (req, res) => {
   try {
-    const {email, password, repeat, name} = req.body
-    const candidate = await User.findOne({ email })
+    const { email, password, repeat, name } = req.body;
+    const candidate = await User.findOne({ email });
 
     if (candidate) {
-      req.flash('registerError', 'Пользователь с таким email уже существует')
-      res.redirect('/auth/login#register')
+      req.flash('registerError', 'Пользователь с таким email уже существует');
+      res.redirect('/auth/login#register');
     } else {
-      const hashPassword = await bcrypt.hash(password, 10)
+      const hashPassword = await bcrypt.hash(password, 10);
       const user = new User({
-        email, name, password: hashPassword, cart: {items: []}
-      })
-      await user.save()
-      res.redirect('/auth/login#login')
+        email,
+        name,
+        password: hashPassword,
+        cart: { items: [] },
+      });
+      await user.save();
+      await transporter.sendMail(regEmail(email));
+      res.redirect('/auth/login#login');
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
   }
-})
+});
 
-module.exports = router
+router.get('/reset', async (req, res) => {
+  res.render('auth/reset', {
+    title: 'Забыли пароль?',
+    error: req.flash('error'),
+  });
+});
+
+router.post('/reset', async (req, res) => {
+  try {
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+module.exports = router;
